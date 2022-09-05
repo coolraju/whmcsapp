@@ -37,6 +37,8 @@ dependencies:
   local_auth: ^2.1.2
   localstorage: ^4.0.0+1
   http: ^0.13.5
+  url_launcher: ^6.1.5
+  crypto: ^3.0.2
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:whmcsadmin/pages/credential.dart';
 import 'dart:async';
 import 'pages/login.dart';
 import 'package:localstorage/localstorage.dart';
@@ -20,7 +19,7 @@ class WhmcsSmarterAdmin extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const WhmcsSmarterHomePage(title: 'Whmcs Smarter Admin'),
+      home: const WhmcsSmarterHomePage(title: 'wSmarters App'),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -36,16 +35,13 @@ class WhmcsSmarterHomePage extends StatefulWidget {
 
 class _WhmcsSmarterHomePageState extends State<WhmcsSmarterHomePage> {
   final LocalStorage storage = LocalStorage('whmcsadmin');
-  String cred = null;
   @override
   void initState() {
     super.initState();
-    getData();
-    print(cred);
     Timer(
         const Duration(seconds: 2),
         () => Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const CredentialPage())));
+            MaterialPageRoute(builder: (context) => const LoginScreen())));
   }
 
   @override
@@ -53,10 +49,6 @@ class _WhmcsSmarterHomePageState extends State<WhmcsSmarterHomePage> {
     // DatabaseHelper.instance.close();
 
     super.dispose();
-  }
-
-  getData() async {
-    storage.ready.then((_) => cred = storage.getItem('whmcsadmin'));
   }
 
   @override

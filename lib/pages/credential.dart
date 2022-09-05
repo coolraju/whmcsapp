@@ -1,10 +1,14 @@
-import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:whmcsadmin/pages/report.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer';
+import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CredentialPage extends StatefulWidget {
   const CredentialPage({Key? key}) : super(key: key);
@@ -14,21 +18,20 @@ class CredentialPage extends StatefulWidget {
 }
 
 class _CredentialPage extends State<CredentialPage> {
-  late String _email;
-  late String _password;
-  late String _whmcsurl;
   final LocalStorage storage = LocalStorage('whmcsadmin');
   final _formKey = GlobalKey<FormState>();
   var client = http.Client();
   final urlController = TextEditingController();
   final apiuserController = TextEditingController();
   final passwordController = TextEditingController();
+  final secretController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text("Add Credential"),
+        title: const Text("API Credential"),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -37,46 +40,104 @@ class _CredentialPage extends State<CredentialPage> {
         child: Form(
           key: _formKey,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              const SizedBox(
+                height: 20,
+              ),
               TextFormField(
                 controller: urlController,
-                decoration: const InputDecoration(labelText: 'Whmcs URL'),
+                decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    errorBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red, width: 1)),
+                    labelText: 'Your WHMCS URL with http/https'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter whmcs url';
+                    return 'Please enter WHMCS url';
                   }
                   return null;
                 },
+              ),
+              const SizedBox(
+                height: 10,
               ),
               TextFormField(
                 controller: apiuserController,
-                decoration: const InputDecoration(labelText: 'Your email'),
+                decoration: const InputDecoration(
+                  labelText: 'Your API Admin User',
+                  border: OutlineInputBorder(),
+                  errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red, width: 1)),
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter some text';
+                    return 'Please enter API Admin user';
                   }
                   return null;
                 },
+              ),
+              const SizedBox(
+                height: 10,
               ),
               TextFormField(
                 controller: passwordController,
-                decoration: const InputDecoration(labelText: 'Your password'),
+                decoration: const InputDecoration(
+                  labelText: 'Your API Admin Password',
+                  border: OutlineInputBorder(),
+                  errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red, width: 1)),
+                ),
                 obscureText: true,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter password';
+                    return 'Please enter API Admin Password';
                   }
                   return null;
                 },
               ),
+              const SizedBox(
+                height: 10,
+              ),
+              TextFormField(
+                controller: secretController,
+                decoration: const InputDecoration(
+                  labelText: 'Your API Access Key',
+                  border: OutlineInputBorder(),
+                  errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red, width: 1)),
+                ),
+                // obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter  API Access Key';
+                  }
+                  return null;
+                },
+              ),
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+              ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 60, vertical: 20),
+                    textStyle:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 onPressed: _submit,
                 child: const Text('Login'),
               ),
-              ElevatedButton(
-                onPressed: _testConnection,
-                child: const Text('Test Connection'),
-              ),
+              const Spacer(flex: 1),
+              Center(
+                  child: InkWell(
+                      child: const Text(
+                        'How to get API Credentials?',
+                        style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 15,
+                            decoration: TextDecoration.underline),
+                      ),
+                      onTap: () => _launchURL())),
             ],
           ),
         ),
@@ -84,51 +145,52 @@ class _CredentialPage extends State<CredentialPage> {
     );
   }
 
-  Future<void> _testConnection() async {
-    final form = _formKey.currentState;
-    if (form!.validate()) {
-      showDialogBox("Please Wait..");
-      try {
-        var url = Uri.https(
-            'www.googleapis.com', '/books/v1/volumes', {'q': '{http}'});
-        var response = await http.get(url);
-        inspect(response);
-        if (response.statusCode == 200) {
-          var resp = response.body;
-          print('Number of books about http: $resp.');
-          Navigator.of(context, rootNavigator: true).pop('dialog');
-          showDialogBox('Credential is correct. Click to Login.');
-        } else {
-          Navigator.of(context, rootNavigator: true).pop('dialog');
-          showDialogBox('Request failed with status: ${response.statusCode}.');
-          print('Request failed with status: ${response.statusCode}.');
-        }
-      } finally {
-        client.close();
-      }
-    }
-  }
-
-  void _submit() {
+  Future<void> _submit() async {
     final form = _formKey.currentState;
     if (form!.validate()) {
       try {
-        WhmcsCredential whmcscredential = WhmcsCredential(urlController.text,
-            apiuserController.text, passwordController.text);
+        WhmcsCredential whmcscredential = WhmcsCredential(
+            urlController.text,
+            apiuserController.text,
+            passwordController.text,
+            secretController.text);
         String jsoncred = jsonEncode(whmcscredential);
         storage.setItem('whmcsadmin', jsoncred);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Processing Data ... ')),
+        final response = await http.post(
+          Uri.parse("${urlController.text}/includes/api.php"),
+          body: {
+            "action": "billingoverview",
+            "username": apiuserController.text.trim(),
+            "password": md5
+                .convert(utf8.encode(passwordController.text.trim()))
+                .toString(),
+            "responsetype": "json",
+            "accesskey": secretController.text.trim(),
+          },
         );
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ReportPage()),
-        );
+        // inspect(response);
+        var jsondata = jsonDecode(response.body);
+        // inspect(jsondata);
+        if (response.statusCode == 200) {
+          if (jsondata['result'] == "success") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ReportPage()),
+            );
+          } else {
+            showDialogBox("Connection failed." + jsondata['message']);
+          }
+        } else {
+          showDialogBox(
+              'Request failed with status: ${response.statusCode}. Message: ${jsondata['message']}');
+          // print('Request failed with status: ${response.statusCode}.');
+        }
       } catch (e) {
         inspect(e);
+        showDialogBox(e.toString());
       }
     } else {
-      print("errror");
+      showDialogBox("Please fill all fields.");
     }
   }
 
@@ -150,13 +212,29 @@ class _CredentialPage extends State<CredentialPage> {
       },
     );
   }
+
+  _launchURL() async {
+    const _url =
+        'https://www.whmcssmarters.com/clients/index.php?rp=/knowledgebase/201/How-to-get-API-Credentials.html';
+    if (await canLaunch(_url)) {
+      await launch(_url);
+    } else {
+      throw 'Could not launch $_url';
+    }
+  }
 }
 
 class WhmcsCredential {
   String whmcsurl;
   String whmcsapiuser;
   String whmcsapipassword;
-  WhmcsCredential(this.whmcsurl, this.whmcsapiuser, this.whmcsapipassword);
-  Map toJson() =>
-      {'url': whmcsurl, 'username': whmcsapiuser, 'password': whmcsapipassword};
+  String secret;
+  WhmcsCredential(
+      this.whmcsurl, this.whmcsapiuser, this.whmcsapipassword, this.secret);
+  Map toJson() => {
+        'url': whmcsurl,
+        'username': whmcsapiuser,
+        'password': whmcsapipassword,
+        'accesskey': secret
+      };
 }
