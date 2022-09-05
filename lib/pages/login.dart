@@ -82,14 +82,49 @@ class _LoginState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: GestureDetector(
-          onTap: () {
-            _authenticate();
-          },
-          child: Align(
-              alignment: Alignment.center,
-              child: Image.asset('assets/images/fingerprint.png')),
+        body: Column(
+          children: <Widget>[
+            Spacer(flex: 2),
+            SizedBox(
+              height: 130,
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                elevation: 0,
+                color: Colors.blue[50],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const <Widget>[
+                    ListTile(
+                      leading: Icon(Icons.notes),
+                      title: Text(
+                        '',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 20),
+                      ),
+                      subtitle: Text(""),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(flex: 2),
+            GestureDetector(
+              onTap: () {
+                _authenticate();
+              },
+              child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset('assets/images/fingerprint.png',
+                      width: 80, height: 100)),
+            ),
+            SizedBox(
+              height: 20,
+            )
+          ],
         ),
       ),
     );
