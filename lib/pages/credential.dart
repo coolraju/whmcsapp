@@ -149,15 +149,8 @@ class _CredentialPage extends State<CredentialPage> {
     final form = _formKey.currentState;
     if (form!.validate()) {
       try {
-        WhmcsCredential whmcscredential = WhmcsCredential(
-            urlController.text,
-            apiuserController.text,
-            passwordController.text,
-            secretController.text);
-        String jsoncred = jsonEncode(whmcscredential);
-        storage.setItem('whmcsadmin', jsoncred);
         final response = await http.post(
-          Uri.parse("${urlController.text}/includes/api.php"),
+          Uri.parse("${urlController.text.trim()}/includes/api.php"),
           body: {
             "action": "billingoverview",
             "username": apiuserController.text.trim(),
@@ -173,6 +166,13 @@ class _CredentialPage extends State<CredentialPage> {
         // inspect(jsondata);
         if (response.statusCode == 200) {
           if (jsondata['result'] == "success") {
+            WhmcsCredential whmcscredential = WhmcsCredential(
+                urlController.text.trim(),
+                apiuserController.text.trim(),
+                passwordController.text.trim(),
+                secretController.text.trim());
+            String jsoncred = jsonEncode(whmcscredential);
+            storage.setItem('whmcsadmin', jsoncred);
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ReportPage()),
@@ -183,7 +183,6 @@ class _CredentialPage extends State<CredentialPage> {
         } else {
           showDialogBox(
               'Request failed with status: ${response.statusCode}. Message: ${jsondata['message']}');
-          // print('Request failed with status: ${response.statusCode}.');
         }
       } catch (e) {
         inspect(e);
