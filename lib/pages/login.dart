@@ -1,14 +1,13 @@
 import 'dart:async';
-import 'dart:developer';
-import 'dart:ffi';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:whmcsadmin/pages/dashboard.dart';
-import 'package:whmcsadmin/pages/report.dart';
-import 'package:whmcsadmin/pages/credential.dart';
+import 'package:SmarterX/pages/dashboard.dart';
+import 'package:SmarterX/pages/credential.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:flutter_app_lock/flutter_app_lock.dart';
+import '../dbhelper.dart';
+import '../whmcslist.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -18,7 +17,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginState extends State<LoginScreen> {
-  late String credential;
+  String credential = '';
+  List<Whmcslist> whmcslist = [];
   final LocalAuthentication auth = LocalAuthentication();
   _SupportState _supportState = _SupportState.unknown;
   // bool? _canCheckBiometrics;
@@ -28,10 +28,12 @@ class _LoginState extends State<LoginScreen> {
   final LocalStorage storage = LocalStorage('whmcsadmin');
   final pinController = TextEditingController();
   final confpinController = TextEditingController();
+  bool authenticated = false;
 
   @override
   void initState() {
     super.initState();
+    getAllWhmcs();
     auth.isDeviceSupported().then(
           (bool isSupported) => setState(() => _supportState = isSupported
               ? _SupportState.supported
@@ -40,7 +42,7 @@ class _LoginState extends State<LoginScreen> {
   }
 
   Future<void> _authenticate() async {
-    bool authenticated = false;
+
     try {
       setState(() {
         _isAuthenticating = true;
@@ -67,16 +69,15 @@ class _LoginState extends State<LoginScreen> {
     setState(() {
       _authorized = authenticated == true ? 'Authorized' : 'Not Authorized';
       if (authenticated == true) {
-        var items = storage.getItem('whmcsadmin');
-        if (items == null) {
+        if (whmcslist.isNotEmpty) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const CredentialPage()),
+            MaterialPageRoute(builder: (context) => const DashboardPage()),
           );
         } else {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ReportPage()),
+            MaterialPageRoute(builder: (context) => const CredentialPage()),
           );
         }
       }
@@ -84,26 +85,31 @@ class _LoginState extends State<LoginScreen> {
   }
 
   Future<void> _pinauthenticate() async {
-    var items = storage.getItem('whmcsadmin');
-    if (items == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CredentialPage()),
-      );
-    } else {
+    if (whmcslist.isNotEmpty) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const DashboardPage()),
       );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CredentialPage()),
+      );
     }
   }
-
+  Future getAllWhmcs() async {
+    final alllists = await DatabaseHelper.instance.queryAllRows();
+    whmcslist.clear();
+    setState(() {
+      alllists.forEach((row) => whmcslist.add(Whmcslist.fromMap(row)));
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: _supportState.name != 'supported'
+        body: _supportState.name == 'supported'
             ? Column(
                 children: <Widget>[
                   const Spacer(flex: 2),
@@ -163,6 +169,7 @@ class _LoginState extends State<LoginScreen> {
             TextField(
               key: const Key('PasswordField'),
               controller: pinController,
+              obscureText: true,
               keyboardType: TextInputType.number,
               inputFormatters: <TextInputFormatter>[
                 FilteringTextInputFormatter.digitsOnly,

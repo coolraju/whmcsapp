@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:whmcsadmin/pages/dashboard.dart';
-import 'package:localstorage/localstorage.dart';
+import 'package:SmarterX/pages/dashboard.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer';
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:sqflite/sqflite.dart';
+import '../dbhelper.dart';
+import '../whmcslist.dart';
 
 class CredentialPage extends StatefulWidget {
   const CredentialPage({Key? key}) : super(key: key);
@@ -19,7 +19,6 @@ class CredentialPage extends StatefulWidget {
 }
 
 class _CredentialPage extends State<CredentialPage> {
-  final LocalStorage storage = LocalStorage('whmcsadmin');
   final _formKey = GlobalKey<FormState>();
   var client = http.Client();
   final nameController = TextEditingController();
@@ -27,15 +26,23 @@ class _CredentialPage extends State<CredentialPage> {
   final apiuserController = TextEditingController();
   final passwordController = TextEditingController();
   final secretController = TextEditingController();
-  bool isLogin = false;
+  bool isWhmcsList = false;
+  bool _passwordVisible = true;
+  List<Whmcslist> whmcslist = [];
+  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    var items = storage.getItem('whmcsadmin');
-    if (items != null) {
-      isLogin = true;
-    }
+    getAllWhmcs();
+  }
+
+  Future getAllWhmcs() async {
+    final alllists = await DatabaseHelper.instance.queryAllRows();
+    whmcslist.clear();
+    setState(() {
+      alllists.forEach((row) => whmcslist.add(Whmcslist.fromMap(row)));
+    });
   }
 
   @override
@@ -45,7 +52,7 @@ class _CredentialPage extends State<CredentialPage> {
       appBar: AppBar(
         title: const Text("API Credential"),
         centerTitle: true,
-        automaticallyImplyLeading: isLogin,
+        automaticallyImplyLeading: whmcslist.isNotEmpty ? true : false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -112,13 +119,22 @@ class _CredentialPage extends State<CredentialPage> {
               ),
               TextFormField(
                 controller: passwordController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
+                  suffixIcon: IconButton(
+                      icon: Icon(_passwordVisible == true
+                          ? Icons.visibility
+                          : Icons.visibility_off),
+                      onPressed: () {
+                        setState(() {
+                          _passwordVisible = !_passwordVisible;
+                        });
+                      }),
                   labelText: 'Your API Admin Password',
-                  border: OutlineInputBorder(),
-                  errorBorder: OutlineInputBorder(
+                  border: const OutlineInputBorder(),
+                  errorBorder: const OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.red, width: 1)),
                 ),
-                obscureText: true,
+                obscureText: _passwordVisible,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter API Admin Password';
@@ -150,11 +166,28 @@ class _CredentialPage extends State<CredentialPage> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 60, vertical: 20),
-                    textStyle:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 60, vertical: 20),
+                    textStyle: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
                 onPressed: _submit,
-                child: const Text('Login'),
+                child: isLoading
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'Loading...',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                          SizedBox(
+                            width: 10,
+                          ),
+                          CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ],
+                      )
+                    : const Text('Add'),
               ),
               const Spacer(flex: 1),
               Center(
@@ -177,6 +210,14 @@ class _CredentialPage extends State<CredentialPage> {
   Future<void> _submit() async {
     final form = _formKey.currentState;
     if (form!.validate()) {
+      setState(() {
+        isLoading = true;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        setState(() {
+          isLoading = false;
+        });
+      });
       try {
         final response = await http.post(
           Uri.parse("${urlController.text.trim()}/includes/api.php"),
@@ -195,13 +236,17 @@ class _CredentialPage extends State<CredentialPage> {
         // inspect(jsondata);
         if (response.statusCode == 200) {
           if (jsondata['result'] == "success") {
-            WhmcsCredential whmcscredential = WhmcsCredential(
-                urlController.text.trim(),
-                apiuserController.text.trim(),
-                passwordController.text.trim(),
-                secretController.text.trim());
-            String jsoncred = jsonEncode(whmcscredential);
-            storage.setItem('whmcsadmin', jsoncred);
+            Map<String, dynamic> row = {
+              DatabaseHelper.columnName: nameController.text.trim(),
+              DatabaseHelper.columnUrl: urlController.text.trim(),
+              DatabaseHelper.columnApi: apiuserController.text.trim(),
+              DatabaseHelper.columnPasword: passwordController.text.trim(),
+              DatabaseHelper.columnSecret: secretController.text.trim(),
+            };
+            Whmcslist whmcslist = Whmcslist.fromMap(row);
+
+            final inserted = await DatabaseHelper.instance.insert(whmcslist);
+            // inspect(inserted);
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const DashboardPage()),
@@ -241,28 +286,11 @@ class _CredentialPage extends State<CredentialPage> {
     );
   }
 
-  _launchURL() async {
-    const _url =
-        'https://www.whmcssmarters.com/clients/index.php?rp=/knowledgebase/201/How-to-get-API-Credentials.html';
-    if (await canLaunch(_url)) {
-      await launch(_url);
-    } else {
+  Future<void> _launchURL() async {
+    final Uri _url = Uri.parse(
+        'https://www.whmcssmarters.com/clients/index.php?rp=/knowledgebase/201/How-to-get-API-Credentials.html');
+    if (!await launchUrl(_url)) {
       throw 'Could not launch $_url';
     }
   }
-}
-
-class WhmcsCredential {
-  String whmcsurl;
-  String whmcsapiuser;
-  String whmcsapipassword;
-  String secret;
-  WhmcsCredential(
-      this.whmcsurl, this.whmcsapiuser, this.whmcsapipassword, this.secret);
-  Map toJson() => {
-        'url': whmcsurl,
-        'username': whmcsapiuser,
-        'password': whmcsapipassword,
-        'accesskey': secret
-      };
 }

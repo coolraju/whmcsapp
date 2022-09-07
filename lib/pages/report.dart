@@ -1,44 +1,48 @@
+import 'package:SmarterX/drawer.dart';
 import 'package:flutter/material.dart';
-import 'package:localstorage/localstorage.dart';
-import 'package:whmcsadmin/pages/credential.dart';
+import 'package:SmarterX/pages/credential.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer';
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:whmcsadmin/pages/dashboard.dart';
+import 'package:SmarterX/pages/dashboard.dart';
+import '../dbhelper.dart';
+import '../whmcslist.dart';
 
 class ReportPage extends StatefulWidget {
-  const ReportPage({Key? key}) : super(key: key);
+  final int id;
+  const ReportPage({Key? key, required this.id}) : super(key: key);
 
   @override
   State<ReportPage> createState() => _ReportPage();
 }
 
 class _ReportPage extends State<ReportPage> {
-  final LocalStorage storage = LocalStorage('whmcsadmin');
+  List<Whmcslist> whmcslist = [];
   String today = "";
   String month = "";
   String year = "";
   String alltime = "";
   bool isData = false;
-  getReport() async {
-    var cred = storage.getItem('whmcsadmin');
-    var credential = jsonDecode(cred.toString());
+
+  Future getReport() async {
+    final alllists = await DatabaseHelper.instance.queryRow(widget.id);
+    alllists.forEach((row) => whmcslist.add(Whmcslist.fromMap(row)));
     try {
+      var password = whmcslist[0].password;
       final response = await http.post(
-        Uri.parse("${credential['url']}/includes/api.php"),
+        Uri.parse("${whmcslist[0].url}/includes/api.php"),
         body: {
           "action": "billingoverview",
-          "username": credential['username'],
-          "password":
-              md5.convert(utf8.encode(credential['password'])).toString(),
+          "username": whmcslist[0].api,
+          "password": md5.convert(utf8.encode(password.toString())).toString(),
           "responsetype": "json",
-          "accesskey": credential['accesskey'],
+          "accesskey": whmcslist[0].secret,
         },
       );
       var jsondata = jsonDecode(response.body);
-      inspect(jsondata['income']);
+      // inspect(jsondata['income']);
       // if (response.statusCode == 200) {
       if (jsondata['result'] == "success") {
         today = jsondata['income']['today'];
@@ -176,109 +180,36 @@ class _ReportPage extends State<ReportPage> {
           title: const Text("Report"),
           centerTitle: true,
           // automaticallyImplyLeading: false,
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(
-                Icons.logout,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                storage.deleteItem('whmcsadmin');
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const CredentialPage()),
-                );
-              },
-            )
-          ],
+          // actions: <Widget>[
+          //   IconButton(
+          //     icon: const Icon(
+          //       Icons.logout,
+          //       color: Colors.white,
+          //     ),
+          //     onPressed: () {
+          //       // storage.deleteItem('whmcsadmin');
+          //       Navigator.push(
+          //         context,
+          //         MaterialPageRoute(
+          //             builder: (context) => const CredentialPage()),
+          //       );
+          //     },
+          //   )
+          // ],
         ),
         body: isData == false
             ? const Center(
                 child: CircularProgressIndicator(),
               )
-            : ReportUI(),
-        drawer: Drawer(
-          child: Container(
-            decoration: BoxDecoration(color: Color.fromARGB(255, 5, 96, 170)),
-            child: Column(
-              children: <Widget>[
-                Expanded(
-                  child: Column(children: <Widget>[
-                    SizedBox(height: 100),
-                    ListTile(
-                      title: Text(
-                        'Settings',
-                        style: TextStyle(fontSize: 18.0, color: Colors.white),
-                      ),
-                      leading: Icon(
-                        Icons.shuffle,
-                        size: 20.0,
-                        color: Colors.white,
-                      ),
-                      onTap: () {
-                        /*Navigator.pop(context);
-                      Navigator.of(context).push(new MaterialPageRoute(
-                          builder: (context) => shufflerBuilder()));*/
-                      },
-                    ),
-                    ListTile(
-                      title: Text(
-                        'Support',
-                        style: TextStyle(fontSize: 18.0, color: Colors.white),
-                      ),
-                      leading: Icon(
-                        Icons.info_outline,
-                        size: 20.0,
-                        color: Colors.white,
-                      ),
-                      onTap: () {
-                        /* Navigator.pop(context);
-                      Navigator.of(context).push(new MaterialPageRoute(
-                          builder: (context) => mistakePage()));*/
-                      },
-                    ),
-                    ListTile(
-                      title: Text(
-                        'Knowlede Base',
-                        style: TextStyle(fontSize: 18.0, color: Colors.white),
-                      ),
-                      leading: Icon(
-                        Icons.border_color,
-                        size: 20.0,
-                        color: Colors.white,
-                      ),
-                      onTap: () {
-                        /*Navigator.of(context).push(new MaterialPageRoute(
-                          builder: (context) => importantLinks()));*/
-                      },
-                    ),
-                  ]),
-                ),
-                Container(
-                    child: Align(
-                        alignment: FractionalOffset.bottomCenter,
-                        child: Column(
-                          children: <Widget>[
-                            Divider(),
-                            ListTile(
-                              leading: Icon(Icons.dashboard),
-                              title: Text('Dashboard'),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          const DashboardPage()),
-                                );
-                              },
-                            ),
-                          ],
-                        ))),
-              ],
-            ),
-          ),
-        ),
+            : RefreshIndicator(
+                color: Colors.white,
+                backgroundColor: Colors.blue,
+                onRefresh: () async {
+                  getReport();
+                  return Future<void>.delayed(const Duration(seconds: 3));
+                },
+                child: ReportUI()),
+        drawer: SiderBar(),
       ),
     );
   }

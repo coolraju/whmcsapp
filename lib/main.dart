@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:whmcsadmin/pages/credential.dart';
 import 'dart:async';
 import 'pages/login.dart';
-import 'package:localstorage/localstorage.dart';
+import 'dbhelper.dart';
 
 void main() {
   runApp(const WhmcsSmarterAdmin());
@@ -35,14 +34,14 @@ class WhmcsSmarterHomePage extends StatefulWidget {
 }
 
 class _WhmcsSmarterHomePageState extends State<WhmcsSmarterHomePage> {
-  final LocalStorage storage = LocalStorage('whmcsadmin');
+  final dbHelper = DatabaseHelper.instance;
   @override
   void initState() {
     super.initState();
     Timer(
         const Duration(seconds: 2),
         () => Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const CredentialPage())));
+            MaterialPageRoute(builder: (context) => const LoginScreen())));
   }
 
   @override
