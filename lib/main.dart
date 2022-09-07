@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:whmcsadmin/pages/credential.dart';
 import 'dart:async';
 import 'pages/login.dart';
 import 'package:localstorage/localstorage.dart';
@@ -41,13 +42,11 @@ class _WhmcsSmarterHomePageState extends State<WhmcsSmarterHomePage> {
     Timer(
         const Duration(seconds: 2),
         () => Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const LoginScreen())));
+            MaterialPageRoute(builder: (context) => const CredentialPage())));
   }
 
   @override
   void dispose() {
-    // DatabaseHelper.instance.close();
-
     super.dispose();
   }
 

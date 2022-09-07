@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:whmcsadmin/pages/report.dart';
+import 'package:whmcsadmin/pages/dashboard.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer';
@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:sqflite/sqflite.dart';
 
 class CredentialPage extends StatefulWidget {
   const CredentialPage({Key? key}) : super(key: key);
@@ -21,10 +22,21 @@ class _CredentialPage extends State<CredentialPage> {
   final LocalStorage storage = LocalStorage('whmcsadmin');
   final _formKey = GlobalKey<FormState>();
   var client = http.Client();
+  final nameController = TextEditingController();
   final urlController = TextEditingController();
   final apiuserController = TextEditingController();
   final passwordController = TextEditingController();
   final secretController = TextEditingController();
+  bool isLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    var items = storage.getItem('whmcsadmin');
+    if (items != null) {
+      isLogin = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +45,7 @@ class _CredentialPage extends State<CredentialPage> {
       appBar: AppBar(
         title: const Text("API Credential"),
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: isLogin,
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -45,6 +57,23 @@ class _CredentialPage extends State<CredentialPage> {
             children: [
               const SizedBox(
                 height: 20,
+              ),
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    errorBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red, width: 1)),
+                    labelText: 'Your WHMCS Name'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter WHMCS Name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(
+                height: 10,
               ),
               TextFormField(
                 controller: urlController,
@@ -161,7 +190,7 @@ class _CredentialPage extends State<CredentialPage> {
             "accesskey": secretController.text.trim(),
           },
         );
-        // inspect(response);
+        inspect(response);
         var jsondata = jsonDecode(response.body);
         // inspect(jsondata);
         if (response.statusCode == 200) {
@@ -175,7 +204,7 @@ class _CredentialPage extends State<CredentialPage> {
             storage.setItem('whmcsadmin', jsoncred);
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ReportPage()),
+              MaterialPageRoute(builder: (context) => const DashboardPage()),
             );
           } else {
             showDialogBox("Connection failed." + jsondata['message']);

@@ -6,6 +6,7 @@ import 'dart:developer';
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:whmcsadmin/pages/dashboard.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({Key? key}) : super(key: key);
@@ -169,32 +170,116 @@ class _ReportPage extends State<ReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Report"),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(
-              Icons.logout,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              storage.deleteItem('whmcsadmin');
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CredentialPage()),
-              );
-            },
-          )
-        ],
-      ),
-      body: isData == false
-          ? const Center(
-              child: CircularProgressIndicator(),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Report"),
+          centerTitle: true,
+          // automaticallyImplyLeading: false,
+          actions: <Widget>[
+            IconButton(
+              icon: const Icon(
+                Icons.logout,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                storage.deleteItem('whmcsadmin');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const CredentialPage()),
+                );
+              },
             )
-          : ReportUI(),
+          ],
+        ),
+        body: isData == false
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : ReportUI(),
+        drawer: Drawer(
+          child: Container(
+            decoration: BoxDecoration(color: Color.fromARGB(255, 5, 96, 170)),
+            child: Column(
+              children: <Widget>[
+                Expanded(
+                  child: Column(children: <Widget>[
+                    SizedBox(height: 100),
+                    ListTile(
+                      title: Text(
+                        'Settings',
+                        style: TextStyle(fontSize: 18.0, color: Colors.white),
+                      ),
+                      leading: Icon(
+                        Icons.shuffle,
+                        size: 20.0,
+                        color: Colors.white,
+                      ),
+                      onTap: () {
+                        /*Navigator.pop(context);
+                      Navigator.of(context).push(new MaterialPageRoute(
+                          builder: (context) => shufflerBuilder()));*/
+                      },
+                    ),
+                    ListTile(
+                      title: Text(
+                        'Support',
+                        style: TextStyle(fontSize: 18.0, color: Colors.white),
+                      ),
+                      leading: Icon(
+                        Icons.info_outline,
+                        size: 20.0,
+                        color: Colors.white,
+                      ),
+                      onTap: () {
+                        /* Navigator.pop(context);
+                      Navigator.of(context).push(new MaterialPageRoute(
+                          builder: (context) => mistakePage()));*/
+                      },
+                    ),
+                    ListTile(
+                      title: Text(
+                        'Knowlede Base',
+                        style: TextStyle(fontSize: 18.0, color: Colors.white),
+                      ),
+                      leading: Icon(
+                        Icons.border_color,
+                        size: 20.0,
+                        color: Colors.white,
+                      ),
+                      onTap: () {
+                        /*Navigator.of(context).push(new MaterialPageRoute(
+                          builder: (context) => importantLinks()));*/
+                      },
+                    ),
+                  ]),
+                ),
+                Container(
+                    child: Align(
+                        alignment: FractionalOffset.bottomCenter,
+                        child: Column(
+                          children: <Widget>[
+                            Divider(),
+                            ListTile(
+                              leading: Icon(Icons.dashboard),
+                              title: Text('Dashboard'),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const DashboardPage()),
+                                );
+                              },
+                            ),
+                          ],
+                        ))),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

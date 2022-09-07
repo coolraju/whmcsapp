@@ -39,6 +39,8 @@ dependencies:
   http: ^0.13.5
   url_launcher: ^6.1.5
   crypto: ^3.0.2
+  flutter_app_lock: ^2.0.0
+  sqflite: ^2.0.3+1
 
 dev_dependencies:
   flutter_test:
